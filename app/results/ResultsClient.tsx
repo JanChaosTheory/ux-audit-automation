@@ -352,6 +352,52 @@ export function ResultsClient({
   const [fixLoading, setFixLoading] = React.useState(false);
   const [fixCopied, setFixCopied] = React.useState(false);
 
+  const runSynthesisOnce = React.useCallback(async () => {
+    if (!auditData) {
+      throw new Error("Missing audit data");
+    }
+
+    const res = await fetch("/api/synthesize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: auditData.url,
+        context,
+        a11y: auditData.a11y,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "GPT analysis failed");
+    }
+
+    return (await res.json()) as SynthesisResponse;
+  }, [auditData, context]);
+
+  const runSynthesis = React.useCallback(async () => {
+    try {
+      setSynthError(null);
+      setSynthLoading(true);
+
+      try {
+        const firstTry = await runSynthesisOnce();
+        setSynth(firstTry);
+        return;
+      } catch {
+        await sleep(500);
+      }
+
+      const secondTry = await runSynthesisOnce();
+      setSynth(secondTry);
+    } catch (e: any) {
+      setSynth(null);
+      setSynthError(String(e?.message ?? e));
+    } finally {
+      setSynthLoading(false);
+    }
+  }, [runSynthesisOnce]);
+
   React.useEffect(() => {
     let cancelled = false;
 
@@ -403,8 +449,7 @@ export function ResultsClient({
     if (!auditLoading && auditData && !synth && !synthLoading) {
       void runSynthesis();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auditLoading, auditData]);
+  }, [auditLoading, auditData, synth, synthLoading, runSynthesis]);
 
   React.useEffect(() => {
     if (!(auditLoading || synthLoading)) return;
@@ -421,52 +466,6 @@ export function ResultsClient({
       timers.forEach(clearTimeout);
     };
   }, [auditLoading, synthLoading]);
-
-  const runSynthesisOnce = React.useCallback(async () => {
-    if (!auditData) {
-      throw new Error("Missing audit data");
-    }
-
-    const res = await fetch("/api/synthesize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: auditData.url,
-        context,
-        a11y: auditData.a11y,
-      }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "GPT analysis failed");
-    }
-
-    return (await res.json()) as SynthesisResponse;
-  }, [auditData, context]);
-
-  const runSynthesis = React.useCallback(async () => {
-    try {
-      setSynthError(null);
-      setSynthLoading(true);
-
-      try {
-        const firstTry = await runSynthesisOnce();
-        setSynth(firstTry);
-        return;
-      } catch {
-        await sleep(500);
-      }
-
-      const secondTry = await runSynthesisOnce();
-      setSynth(secondTry);
-    } catch (e: any) {
-      setSynth(null);
-      setSynthError(String(e?.message ?? e));
-    } finally {
-      setSynthLoading(false);
-    }
-  }, [runSynthesisOnce]);
 
   const violations = auditData?.a11y.topViolations ?? [];
   const screenshots = auditData?.screenshots;
@@ -644,16 +643,6 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
               </TabsTrigger>
             </TabsList>
 
-            {showFeedbackBanner && (
-              <div className="mt-4 flex items-center gap-2 rounded-md border border-muted bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                <span className="text-base">ℹ</span>
-                <span>
-                  Help improve this audit. Hover or tap any feedback point to
-                  rate it. The AI learns from every response.
-                </span>
-              </div>
-            )}
-
             {isLoadingView ? (
               <div className="mt-4">
                 <LoadingState currentStep={loadingStep} />
@@ -777,6 +766,17 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                                 feedbackType="summary"
                               />
                             </div>
+
+                            {showFeedbackBanner && (
+                              <div className="mt-4 flex items-center gap-2 rounded-md border border-muted bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                                <span className="text-base">ℹ</span>
+                                <span>
+                                  Help improve this audit. Hover or tap any
+                                  feedback point to rate it. The AI learns from
+                                  every response.
+                                </span>
+                              </div>
+                            )}
 
                             <SectionList
                               title="Shared issues"
