@@ -64,10 +64,6 @@ export async function GET(request: NextRequest) {
       ignoreHTTPSErrors: true,
     });
 
-    await context.addInitScript({
-      content: axe.source,
-    });
-
     page = await context.newPage();
 
     await page.goto(url, {
@@ -78,13 +74,20 @@ export async function GET(request: NextRequest) {
     await page.waitForLoadState("networkidle").catch(() => {});
     await page.waitForTimeout(1500);
 
+    await page.addScriptTag({
+      content: axe.source,
+    });
+
+    const hasAxe = await page.evaluate(
+      () => typeof (window as any).axe !== "undefined"
+    );
+
+    if (!hasAxe) {
+      throw new Error("axe failed to inject");
+    }
+
     const results = await page.evaluate(async () => {
       const axeGlobal = (window as any).axe;
-
-      if (!axeGlobal) {
-        throw new Error("axe not available in page");
-      }
-
       return await axeGlobal.run(document);
     });
 
