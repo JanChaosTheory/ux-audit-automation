@@ -88,6 +88,18 @@ export async function GET(request: NextRequest) {
     await page.waitForLoadState("networkidle").catch(() => {});
     await page.waitForTimeout(1500);
 
+    const desktopScreenshot = await page.screenshot({
+      type: "jpeg",
+      quality: 60,
+      fullPage: false,
+    });
+
+    const foldedScreenshot = await page.screenshot({
+      type: "jpeg",
+      quality: 60,
+      fullPage: true,
+    });
+
     await page.addScriptTag({
       content: axeSource,
     });
@@ -120,6 +132,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       url,
+      screenshots: {
+        desktop: `data:image/jpeg;base64,${desktopScreenshot.toString("base64")}`,
+        folded: `data:image/jpeg;base64,${foldedScreenshot.toString("base64")}`,
+      },
       a11y: {
         violationsCount: violations.length,
         topViolations,
