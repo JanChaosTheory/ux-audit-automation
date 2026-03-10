@@ -464,12 +464,16 @@ export function ResultsClient({
   React.useEffect(() => {
     if (!(auditLoading || synthLoading)) return;
 
-    setLoadingStep(1);
-
     const timers = [
-      setTimeout(() => setLoadingStep(2), 1500),
-      setTimeout(() => setLoadingStep(3), 3500),
-      setTimeout(() => setLoadingStep(4), 6000),
+      setTimeout(() => {
+        setLoadingStep((prev) => Math.max(prev, 2) as 1 | 2 | 3 | 4);
+      }, 1500),
+      setTimeout(() => {
+        setLoadingStep((prev) => Math.max(prev, 3) as 1 | 2 | 3 | 4);
+      }, 3500),
+      setTimeout(() => {
+        setLoadingStep((prev) => Math.max(prev, 4) as 1 | 2 | 3 | 4);
+      }, 6000),
     ];
 
     return () => {
