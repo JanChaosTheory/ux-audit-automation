@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chromium } from "playwright-core";
+import axe from "axe-core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,31 +69,23 @@ export async function GET(request: NextRequest) {
     page = await context.newPage();
 
     await page.goto(url, {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: PAGE_TIMEOUT_MS,
     });
 
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle").catch(() => {});
     await page.waitForTimeout(1500);
 
-    await page.evaluate(() => {
-      const existing = document.querySelector('script[data-uxscan-axe="true"]');
-      if (existing) return;
-
-      const script = document.createElement("script");
-      script.src = "https://unpkg.com/axe-core@4.10.2/axe.min.js";
-      script.async = false;
-      script.setAttribute("data-uxscan-axe", "true");
-      document.head.appendChild(script);
-    });
-
-    await page.waitForFunction(() => typeof (window as any).axe !== "undefined", {
-      timeout: 15000,
+    await page.addScriptTag({
+      content: axe.source,
     });
 
     const results = await page.evaluate(async () => {
-      const axe = (window as any).axe;
-      return await axe.run(document);
+      const axeGlobal = (window as any).axe;
+      if (!axeGlobal) {
+        throw new Error("axe not available in page");
+      }
+      return await axeGlobal.run(document);
     });
 
     const violations = results?.violations ?? [];
