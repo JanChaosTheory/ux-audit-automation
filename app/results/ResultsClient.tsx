@@ -502,7 +502,7 @@ export function ResultsClient({
     ].map((item) => stripPrefix(item, "shared"));
   }, [synth]);
 
-  const isLoadingView = auditLoading || (auditData && synthLoading && !synth);
+  const isLoadingView = auditLoading || (!!auditData && synthLoading && !synth);
   const showFeedbackBanner = !auditLoading && !synthLoading && !!synth;
 
   async function handleGenerateFix(issue: string) {
