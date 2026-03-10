@@ -68,14 +68,26 @@ export async function GET(request: NextRequest) {
     page = await context.newPage();
 
     await page.goto(url, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
       timeout: PAGE_TIMEOUT_MS,
     });
 
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState("domcontentloaded");
+    await page.waitForTimeout(1500);
 
-    await page.addScriptTag({
-      url: "https://unpkg.com/axe-core@4.10.2/axe.min.js",
+    await page.evaluate(() => {
+      const existing = document.querySelector('script[data-uxscan-axe="true"]');
+      if (existing) return;
+
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/axe-core@4.10.2/axe.min.js";
+      script.async = false;
+      script.setAttribute("data-uxscan-axe", "true");
+      document.head.appendChild(script);
+    });
+
+    await page.waitForFunction(() => typeof (window as any).axe !== "undefined", {
+      timeout: 15000,
     });
 
     const results = await page.evaluate(async () => {
