@@ -65,46 +65,49 @@ export async function GET(request: NextRequest) {
   const wsEndpoint = `wss://production-sfo.browserless.io?token=${token}`;
 
   let browser: any = null;
-  let context: any = null;
-  let page: any = null;
+  let desktopContext: any = null;
+  let desktopPage: any = null;
+  let mobileContext: any = null;
+  let mobilePage: any = null;
 
   try {
     const axeSource = await getAxeSource();
 
     browser = await chromium.connectOverCDP(wsEndpoint);
 
-    context = await browser.newContext({
+    desktopContext = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
       bypassCSP: true,
       ignoreHTTPSErrors: true,
     });
 
-    page = await context.newPage();
+    desktopPage = await desktopContext.newPage();
 
-    await page.goto(url, {
+    await desktopPage.goto(url, {
       waitUntil: "domcontentloaded",
       timeout: PAGE_TIMEOUT_MS,
     });
 
-    await page.waitForLoadState("networkidle").catch(() => {});
-    await page.waitForTimeout(1500);
+    await desktopPage.waitForLoadState("networkidle").catch(() => {});
+    await desktopPage.waitForTimeout(1500);
 
-    const desktopScreenshot = await page.screenshot({
+    const desktopScreenshot = await desktopPage.screenshot({
       type: "jpeg",
       quality: 60,
       fullPage: false,
     });
 
-    const foldedScreenshot = await page.screenshot({
+    const foldedScreenshot = await desktopPage.screenshot({
       type: "jpeg",
       quality: 60,
       fullPage: true,
     });
 
-    await page.addScriptTag({
+    await desktopPage.addScriptTag({
       content: axeSource,
     });
 
-    const hasAxe = await page.evaluate(
+    const hasAxe = await desktopPage.evaluate(
       () => typeof (window as any).axe !== "undefined"
     );
 
@@ -112,9 +115,35 @@ export async function GET(request: NextRequest) {
       throw new Error("axe injection failed");
     }
 
-    const results = await page.evaluate(async () => {
+    const results = await desktopPage.evaluate(async () => {
       const axeGlobal = (window as any).axe;
       return await axeGlobal.run(document);
+    });
+
+    mobileContext = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      userAgent:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+      isMobile: true,
+      hasTouch: true,
+      bypassCSP: true,
+      ignoreHTTPSErrors: true,
+    });
+
+    mobilePage = await mobileContext.newPage();
+
+    await mobilePage.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: PAGE_TIMEOUT_MS,
+    });
+
+    await mobilePage.waitForLoadState("networkidle").catch(() => {});
+    await mobilePage.waitForTimeout(1500);
+
+    const mobileScreenshot = await mobilePage.screenshot({
+      type: "jpeg",
+      quality: 60,
+      fullPage: false,
     });
 
     const violations = results?.violations ?? [];
@@ -134,6 +163,7 @@ export async function GET(request: NextRequest) {
       url,
       screenshots: {
         desktop: `data:image/jpeg;base64,${desktopScreenshot.toString("base64")}`,
+        mobile: `data:image/jpeg;base64,${mobileScreenshot.toString("base64")}`,
         folded: `data:image/jpeg;base64,${foldedScreenshot.toString("base64")}`,
       },
       a11y: {
@@ -147,8 +177,10 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   } finally {
-    await page?.close().catch(() => {});
-    await context?.close().catch(() => {});
+    await mobilePage?.close().catch(() => {});
+    await mobileContext?.close().catch(() => {});
+    await desktopPage?.close().catch(() => {});
+    await desktopContext?.close().catch(() => {});
     await browser?.close().catch(() => {});
   }
 }
