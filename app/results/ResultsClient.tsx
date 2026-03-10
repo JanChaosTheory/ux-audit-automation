@@ -26,6 +26,11 @@ export type A11yTopViolation = {
 export type AuditResponse = {
   url: string;
   context?: string;
+  screenshots?: {
+    desktop?: string;
+    mobile?: string;
+    folded?: string;
+  };
   a11y: {
     violationsCount: number;
     topViolations: A11yTopViolation[];
@@ -38,11 +43,6 @@ type SynthesisResponse = {
   quickWins: string[];
   decision: "ship" | "caution" | "do_not_ship";
   decisionReason: string;
-  screenshots?: {
-    desktop?: string;
-    mobile?: string;
-    folded?: string;
-  };
 };
 
 type FixResponse = {
@@ -328,6 +328,7 @@ function FixPromptModal({
 export function ResultsClient({ data }: { data: AuditResponse }) {
   const violations = data.a11y.topViolations;
   const context = data.context || "";
+  const screenshots = data.screenshots;
 
   const score = React.useMemo(() => calcScore(violations), [violations]);
   const scoreChip = scoreEmoji(score);
@@ -716,10 +717,10 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                 </TabsContent>
 
                 <TabsContent value="screenshots" className="mt-4 space-y-4">
-                  {synth?.screenshots &&
-                  (synth.screenshots.desktop ||
-                    synth.screenshots.mobile ||
-                    synth.screenshots.folded) ? (
+                  {screenshots &&
+                  (screenshots.desktop ||
+                    screenshots.mobile ||
+                    screenshots.folded) ? (
                     <Card>
                       <CardHeader>
                         <CardTitle>Screenshots</CardTitle>
@@ -730,14 +731,14 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
 
                       <CardContent>
                         <div className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
-                          {synth.screenshots.desktop && (
+                          {screenshots.desktop && (
                             <div className="space-y-2">
                               <div className="text-xs text-muted-foreground">
                                 Desktop, above the fold
                               </div>
                               <div className="rounded-md border bg-muted/20 p-2">
                                 <img
-                                  src={synth.screenshots.desktop}
+                                  src={screenshots.desktop}
                                   alt="Desktop screenshot"
                                   className="h-[220px] w-full rounded object-contain"
                                 />
@@ -745,14 +746,14 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                             </div>
                           )}
 
-                          {synth.screenshots.mobile && (
+                          {screenshots.mobile && (
                             <div className="space-y-2">
                               <div className="text-xs text-muted-foreground">
                                 Mobile, above the fold
                               </div>
                               <div className="rounded-md border bg-muted/20 p-2">
                                 <img
-                                  src={synth.screenshots.mobile}
+                                  src={screenshots.mobile}
                                   alt="Mobile screenshot"
                                   className="mx-auto h-[420px] w-auto rounded object-contain"
                                 />
@@ -760,15 +761,15 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                             </div>
                           )}
 
-                          {synth.screenshots.folded && (
+                          {screenshots.folded && (
                             <div className="space-y-2 lg:col-span-2">
                               <div className="text-xs text-muted-foreground">
-                                Desktop, scrolled section
+                                Desktop, full page
                               </div>
                               <div className="rounded-md border bg-muted/20 p-2">
                                 <img
-                                  src={synth.screenshots.folded}
-                                  alt="Folded screenshot"
+                                  src={screenshots.folded}
+                                  alt="Full page screenshot"
                                   className="h-[260px] w-full rounded object-contain"
                                 />
                               </div>
