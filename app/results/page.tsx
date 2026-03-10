@@ -12,6 +12,15 @@ async function getBaseUrl() {
   return `${protocol}://${host}`;
 }
 
+function formatErrorText(text: string) {
+  try {
+    const parsed = JSON.parse(text);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return text || "Unknown error";
+  }
+}
+
 export default async function ResultsPage({
   searchParams,
 }: {
@@ -47,6 +56,7 @@ export default async function ResultsPage({
 
   if (!res.ok) {
     const text = await res.text();
+    const formattedError = formatErrorText(text);
 
     return (
       <main className="mx-auto max-w-3xl p-8">
@@ -54,8 +64,8 @@ export default async function ResultsPage({
         <p className="mt-2 text-sm text-destructive">
           Audit could not be completed.
         </p>
-        <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-xs">
-          {text}
+        <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-6">
+          {formattedError}
         </pre>
       </main>
     );
