@@ -139,11 +139,10 @@ export async function GET(request: NextRequest) {
 
     await mobilePage.waitForLoadState("networkidle").catch(() => {});
 
-    // extra buffer for SPA loading / skeleton screens
-    await mobilePage.waitForTimeout(4000);
-
-    // confirm page is there before capture
-    await mobilePage.waitForSelector("body", { timeout: 5000 }).catch(() => {});
+    await Promise.race([
+      mobilePage.waitForSelector("main", { timeout: 4000 }),
+      mobilePage.waitForSelector("body", { timeout: 4000 }),
+    ]).catch(() => {});
 
     const mobileScreenshot = await mobilePage.screenshot({
       type: "jpeg",
