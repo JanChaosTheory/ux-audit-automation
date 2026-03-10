@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chromium as playwright, type Browser, type BrowserContext, type Page } from "playwright-core";
-import chromium from "@sparticuz/chromium";
+import {
+  chromium as playwright,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from "playwright-core";
+import chromium from "@sparticuz/chromium-min";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
