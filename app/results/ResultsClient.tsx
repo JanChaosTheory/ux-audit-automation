@@ -325,13 +325,18 @@ function FixPromptModal({
   );
 }
 
-export function ResultsClient({ data }: { data: AuditResponse }) {
-  const violations = data.a11y.topViolations;
-  const context = data.context || "";
-  const screenshots = data.screenshots;
+export function ResultsClient({
+  initialUrl,
+  initialContext,
+}: {
+  initialUrl: string;
+  initialContext: string;
+}) {
+  const context = initialContext || "";
 
-  const score = React.useMemo(() => calcScore(violations), [violations]);
-  const scoreChip = scoreEmoji(score);
+  const [auditData, setAuditData] = React.useState<AuditResponse | null>(null);
+  const [auditError, setAuditError] = React.useState<string | null>(null);
+  const [auditLoading, setAuditLoading] = React.useState(true);
 
   const [activeTab, setActiveTab] = React.useState<TabKey>("summary");
   const [synth, setSynth] = React.useState<SynthesisResponse | null>(null);
@@ -347,14 +352,88 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
   const [fixLoading, setFixLoading] = React.useState(false);
   const [fixCopied, setFixCopied] = React.useState(false);
 
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function runAudit() {
+      try {
+        setAuditLoading(true);
+        setAuditError(null);
+
+        const params = new URLSearchParams({
+          url: initialUrl,
+          context,
+        });
+
+        const res = await fetch(`/api/audit?${params.toString()}`, {
+          cache: "no-store",
+        });
+
+        const text = await res.text();
+
+        if (!res.ok) {
+          throw new Error(text || "Audit failed");
+        }
+
+        const json = JSON.parse(text) as AuditResponse;
+
+        if (!cancelled) {
+          setAuditData({ ...json, context });
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setAuditError(String(e?.message ?? e));
+          setAuditData(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setAuditLoading(false);
+        }
+      }
+    }
+
+    void runAudit();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialUrl, context]);
+
+  React.useEffect(() => {
+    if (!auditLoading && auditData && !synth && !synthLoading) {
+      void runSynthesis();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auditLoading, auditData]);
+
+  React.useEffect(() => {
+    if (!(auditLoading || synthLoading)) return;
+
+    setLoadingStep(1);
+
+    const timers = [
+      setTimeout(() => setLoadingStep(2), 2000),
+      setTimeout(() => setLoadingStep(3), 5000),
+      setTimeout(() => setLoadingStep(4), 8000),
+    ];
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [auditLoading, synthLoading]);
+
   const runSynthesisOnce = React.useCallback(async () => {
+    if (!auditData) {
+      throw new Error("Missing audit data");
+    }
+
     const res = await fetch("/api/synthesize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        url: data.url,
+        url: auditData.url,
         context,
-        a11y: data.a11y,
+        a11y: auditData.a11y,
       }),
     });
 
@@ -364,13 +443,12 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
     }
 
     return (await res.json()) as SynthesisResponse;
-  }, [data.url, data.a11y, context]);
+  }, [auditData, context]);
 
   const runSynthesis = React.useCallback(async () => {
     try {
       setSynthError(null);
       setSynthLoading(true);
-      setLoadingStep(1);
 
       try {
         const firstTry = await runSynthesisOnce();
@@ -390,27 +468,10 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
     }
   }, [runSynthesisOnce]);
 
-  React.useEffect(() => {
-    void runSynthesis();
-  }, [runSynthesis]);
-
-  React.useEffect(() => {
-    if (!synthLoading) return;
-
-    setLoadingStep(1);
-
-    const timers = [
-      setTimeout(() => setLoadingStep(2), 10_000),
-      setTimeout(() => setLoadingStep(3), 40_000),
-      setTimeout(() => setLoadingStep(4), 80_000),
-    ];
-
-    return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [synthLoading]);
-
-  const gptChip = decisionEmoji(synth?.decision);
+  const violations = auditData?.a11y.topViolations ?? [];
+  const screenshots = auditData?.screenshots;
+  const score = React.useMemo(() => calcScore(violations), [violations]);
+  const scoreChip = scoreEmoji(score);
 
   const summaryDesktop = React.useMemo(() => {
     return pickByPrefix(synth?.summary ?? [], "desktop").map((item) =>
@@ -431,10 +492,12 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
     ].map((item) => stripPrefix(item, "shared"));
   }, [synth]);
 
-  const isLoadingView = synthLoading && !synth && !synthError;
-  const showFeedbackBanner = !synthLoading && !synthError && !!synth;
+  const isLoadingView = auditLoading || (auditData && synthLoading && !synth);
+  const showFeedbackBanner = !auditLoading && !!auditData;
 
   async function handleGenerateFix(issue: string) {
+    const activeUrl = auditData?.url || initialUrl;
+
     setSelectedFixIssue(issue);
     setFixPrompt("");
     setFixCopied(false);
@@ -449,7 +512,7 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
         },
         body: JSON.stringify({
           issue,
-          url: data.url,
+          url: activeUrl,
           context,
         }),
       });
@@ -470,7 +533,7 @@ Fix the following usability issue:
 "${issue}"
 
 Page URL:
-${data.url}
+${activeUrl}
 
 ${context ? `Context:\n${context}\n\n` : ""}Provide:
 - specific UI changes
@@ -499,6 +562,31 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
     setFixCopied(false);
   }
 
+  if (auditError) {
+    return (
+      <main className="min-h-screen bg-background">
+        <div className="mx-auto max-w-3xl p-8">
+          <div className="mb-4">
+            <Link
+              href="/audit"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← New audit
+            </Link>
+          </div>
+
+          <h1 className="text-2xl font-semibold">UX SCAN+ results</h1>
+          <p className="mt-2 text-sm text-destructive">
+            Audit could not be completed.
+          </p>
+          <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-6">
+            {auditError}
+          </pre>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl p-8">
@@ -518,12 +606,12 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
             <div className="mt-2 text-sm">
               <span className="text-muted-foreground">URL:</span>{" "}
               <a
-                href={data.url}
+                href={initialUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="underline"
               >
-                {data.url}
+                {initialUrl}
               </a>
             </div>
 
@@ -592,7 +680,7 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                       </div>
 
                       <div className="mt-2 text-sm text-muted-foreground">
-                        Violations: {data.a11y.violationsCount}
+                        Violations: {auditData?.a11y.violationsCount ?? 0}
                       </div>
                     </CardContent>
                   </Card>
@@ -606,7 +694,7 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                           variant="outline"
                           size="sm"
                           onClick={() => void runSynthesis()}
-                          disabled={synthLoading}
+                          disabled={synthLoading || !auditData}
                         >
                           {synthLoading ? "Running..." : "Re-run"}
                         </Button>
@@ -805,7 +893,7 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                       </div>
 
                       <div className="mt-2 text-sm text-muted-foreground">
-                        Violations: {data.a11y.violationsCount}
+                        Violations: {auditData?.a11y.violationsCount ?? 0}
                       </div>
                     </CardContent>
                   </Card>
