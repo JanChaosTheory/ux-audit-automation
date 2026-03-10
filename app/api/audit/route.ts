@@ -59,12 +59,14 @@ export async function GET(request: NextRequest) {
   try {
     browser = await chromium.connectOverCDP(wsEndpoint);
 
-    context =
-      browser.contexts()[0] ??
-      (await browser.newContext({
-        bypassCSP: true,
-        ignoreHTTPSErrors: true,
-      }));
+    context = await browser.newContext({
+      bypassCSP: true,
+      ignoreHTTPSErrors: true,
+    });
+
+    await context.addInitScript({
+      content: axe.source,
+    });
 
     page = await context.newPage();
 
@@ -76,15 +78,13 @@ export async function GET(request: NextRequest) {
     await page.waitForLoadState("networkidle").catch(() => {});
     await page.waitForTimeout(1500);
 
-    await page.addScriptTag({
-      content: axe.source,
-    });
-
     const results = await page.evaluate(async () => {
       const axeGlobal = (window as any).axe;
+
       if (!axeGlobal) {
         throw new Error("axe not available in page");
       }
+
       return await axeGlobal.run(document);
     });
 
