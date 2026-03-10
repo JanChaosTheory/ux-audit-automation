@@ -64,18 +64,20 @@ export async function GET(request: NextRequest) {
 
   const wsEndpoint = `wss://production-sfo.browserless.io?token=${token}`;
 
-  let browser: any = null;
+  let desktopBrowser: any = null;
   let desktopContext: any = null;
   let desktopPage: any = null;
+
+  let mobileBrowser: any = null;
   let mobileContext: any = null;
   let mobilePage: any = null;
 
   try {
     const axeSource = await getAxeSource();
 
-    browser = await chromium.connectOverCDP(wsEndpoint);
+    desktopBrowser = await chromium.connectOverCDP(wsEndpoint);
 
-    desktopContext = await browser.newContext({
+    desktopContext = await desktopBrowser.newContext({
       viewport: { width: 1440, height: 900 },
       bypassCSP: true,
       ignoreHTTPSErrors: true,
@@ -120,7 +122,9 @@ export async function GET(request: NextRequest) {
       return await axeGlobal.run(document);
     });
 
-    mobileContext = await browser.newContext({
+    mobileBrowser = await chromium.connectOverCDP(wsEndpoint);
+
+    mobileContext = await mobileBrowser.newContext({
       viewport: { width: 390, height: 844 },
       userAgent:
         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
@@ -138,7 +142,6 @@ export async function GET(request: NextRequest) {
     });
 
     await mobilePage.waitForLoadState("networkidle").catch(() => {});
-
     await Promise.race([
       mobilePage.waitForSelector("main", { timeout: 4000 }),
       mobilePage.waitForSelector("body", { timeout: 4000 }),
@@ -183,8 +186,10 @@ export async function GET(request: NextRequest) {
   } finally {
     await mobilePage?.close().catch(() => {});
     await mobileContext?.close().catch(() => {});
+    await mobileBrowser?.close().catch(() => {});
+
     await desktopPage?.close().catch(() => {});
     await desktopContext?.close().catch(() => {});
-    await browser?.close().catch(() => {});
+    await desktopBrowser?.close().catch(() => {});
   }
 }
