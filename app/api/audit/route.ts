@@ -74,16 +74,14 @@ export async function GET(request: NextRequest) {
     await page.waitForLoadState("networkidle").catch(() => {});
     await page.waitForTimeout(1500);
 
-    await page.addScriptTag({
-      content: axe.source,
-    });
+    await page.evaluate(axe.source);
 
     const hasAxe = await page.evaluate(
       () => typeof (window as any).axe !== "undefined"
     );
 
     if (!hasAxe) {
-      throw new Error("axe failed to inject");
+      throw new Error("axe injection failed");
     }
 
     const results = await page.evaluate(async () => {
