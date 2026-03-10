@@ -49,18 +49,22 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const wsEndpoint = `wss://chrome.browserless.io/playwright?token=${token}`;
+  const wsEndpoint = `wss://production-sfo.browserless.io?token=${token}`;
 
-  const browser = await chromium.connect(wsEndpoint);
-
-  const context = await browser.newContext({
-    bypassCSP: true,
-    ignoreHTTPSErrors: true,
-  });
-
-  const page = await context.newPage();
+  let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | null = null;
+  let context: Awaited<ReturnType<typeof browserContextFactory>> | null = null;
+  let page: Awaited<ReturnType<typeof pageFactory>> | null = null;
 
   try {
+    browser = await chromium.connectOverCDP(wsEndpoint);
+
+    context = browser.contexts()[0] ?? (await browser.newContext({
+      bypassCSP: true,
+      ignoreHTTPSErrors: true,
+    }));
+
+    page = await context.newPage();
+
     await page.goto(url, {
       waitUntil: "domcontentloaded",
       timeout: PAGE_TIMEOUT_MS,
@@ -103,8 +107,16 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   } finally {
-    await page.close();
-    await context.close();
-    await browser.close();
+    await page?.close().catch(() => {});
+    await context?.close().catch(() => {});
+    await browser?.close().catch(() => {});
   }
+}
+
+async function browserContextFactory() {
+  throw new Error("helper type only");
+}
+
+async function pageFactory() {
+  throw new Error("helper type only");
 }
