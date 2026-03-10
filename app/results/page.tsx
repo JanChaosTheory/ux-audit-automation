@@ -3,13 +3,14 @@ import { ResultsClient } from "./ResultsClient";
 
 export const dynamic = "force-dynamic";
 
-export default function ResultsPage({
+export default async function ResultsPage({
   searchParams,
 }: {
-  searchParams: { url?: string; context?: string };
+  searchParams: Promise<{ url?: string; context?: string }>;
 }) {
-  const url = searchParams.url?.trim();
-  const context = searchParams.context?.trim() || "";
+  const sp = await searchParams;
+  const url = sp.url?.trim();
+  const context = sp.context?.trim() || "";
 
   if (!url) {
     return (
