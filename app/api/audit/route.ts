@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chromium } from "playwright-core";
-import axe from "axe-core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TOP_VIOLATIONS_LIMIT = 10;
 const PAGE_TIMEOUT_MS = 60000;
+const AXE_CDN_URL = "https://unpkg.com/axe-core@4.10.2/axe.min.js";
 
 function isUrlAllowed(urlStr: string): boolean {
   try {
@@ -34,6 +34,18 @@ function isUrlAllowed(urlStr: string): boolean {
   }
 }
 
+async function getAxeSource() {
+  const res = await fetch(AXE_CDN_URL, {
+    cache: "force-cache",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to download axe: ${res.status}`);
+  }
+
+  return await res.text();
+}
+
 export async function GET(request: NextRequest) {
   const url = (request.nextUrl.searchParams.get("url") ?? "").trim();
 
@@ -57,6 +69,8 @@ export async function GET(request: NextRequest) {
   let page: any = null;
 
   try {
+    const axeSource = await getAxeSource();
+
     browser = await chromium.connectOverCDP(wsEndpoint);
 
     context = await browser.newContext({
@@ -74,7 +88,9 @@ export async function GET(request: NextRequest) {
     await page.waitForLoadState("networkidle").catch(() => {});
     await page.waitForTimeout(1500);
 
-    await page.evaluate(axe.source);
+    await page.addScriptTag({
+      content: axeSource,
+    });
 
     const hasAxe = await page.evaluate(
       () => typeof (window as any).axe !== "undefined"
