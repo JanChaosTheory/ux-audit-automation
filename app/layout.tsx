@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UX Audit Automation",
-  description: "Run structured UX audits with heuristic evaluation and accessibility checks.",
+  title: "UX SCAN+ · AI UX Audit",
+  description:
+    "UCSCAN+ runs automated UX and accessibility audits in minutes. Analyze any page, detect usability risks, and get AI-powered improvement suggestions.",
 };
 
 export default function RootLayout({

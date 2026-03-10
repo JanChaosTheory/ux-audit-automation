@@ -45,6 +45,11 @@ type SynthesisResponse = {
   };
 };
 
+type FixResponse = {
+  prompt: string;
+  source: "gpt" | "fallback";
+};
+
 type TabKey = "summary" | "screenshots" | "a11y";
 type FeedbackType = "summary" | "risk" | "quickwin";
 
@@ -172,7 +177,7 @@ function LoadingState({
         </div>
 
         <div className="text-xs text-muted-foreground">
-        The report will appear automatically when the analysis finishes.
+          The report will appear automatically when the analysis finishes.
         </div>
       </CardContent>
     </Card>
@@ -195,7 +200,7 @@ function SectionList({
       <div className="font-medium">{title}</div>
 
       {items.length > 0 ? (
-        <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
+        <ul className="mt-2 space-y-2 text-muted-foreground">
           {items.map((item, index) => (
             <FeedbackRow
               key={`${title}-${index}`}
@@ -207,6 +212,115 @@ function SectionList({
       ) : (
         <div className="mt-2 text-sm text-muted-foreground">{emptyText}</div>
       )}
+    </div>
+  );
+}
+
+function QuickWinRow({
+  text,
+  onGenerateFix,
+}: {
+  text: string;
+  onGenerateFix: () => void;
+}) {
+  return (
+    <li className="border-t first:border-t-0">
+      <div className="flex items-center justify-between gap-6 py-3">
+        <div className="min-w-0 flex-1 text-sm leading-6 text-muted-foreground">
+          {text}
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onGenerateFix}
+          className="shrink-0"
+        >
+          <span aria-hidden="true">✨</span>
+          <span>Generate fix</span>
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+function FixPromptModal({
+  open,
+  issue,
+  prompt,
+  loading,
+  copied,
+  onClose,
+  onCopy,
+}: {
+  open: boolean;
+  issue: string | null;
+  prompt: string;
+  loading: boolean;
+  copied: boolean;
+  onClose: () => void;
+  onCopy: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+      <div className="w-full max-w-2xl overflow-hidden rounded-t-2xl border bg-background shadow-xl sm:rounded-xl">
+        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted sm:hidden" />
+
+        <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
+          <div>
+            <div className="text-base font-semibold">Suggested fix prompt</div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              Paste this into Cursor, Claude, or ChatGPT to generate the fix.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] overflow-y-auto space-y-4 px-5 py-4 sm:max-h-none">
+          {issue && (
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Quick win
+              </div>
+              <div className="mt-1 text-sm">{issue}</div>
+            </div>
+          )}
+
+          <div className="rounded-md border bg-muted/20 p-3">
+            {loading ? (
+              <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+                Generating fix prompt...
+              </div>
+            ) : (
+              <pre className="whitespace-pre-wrap text-sm leading-6">
+                {prompt}
+              </pre>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t px-5 py-4">
+          <div className="text-xs text-muted-foreground">
+            {copied ? "Prompt copied." : "Ready to copy and use."}
+          </div>
+
+          <Button size="sm" onClick={onCopy} disabled={loading || !prompt}>
+            {copied ? "Copied" : "Copy prompt"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -223,6 +337,14 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
   const [synthLoading, setSynthLoading] = React.useState(false);
   const [synthError, setSynthError] = React.useState<string | null>(null);
   const [loadingStep, setLoadingStep] = React.useState<1 | 2 | 3 | 4>(1);
+
+  const [fixModalOpen, setFixModalOpen] = React.useState(false);
+  const [selectedFixIssue, setSelectedFixIssue] = React.useState<string | null>(
+    null
+  );
+  const [fixPrompt, setFixPrompt] = React.useState("");
+  const [fixLoading, setFixLoading] = React.useState(false);
+  const [fixCopied, setFixCopied] = React.useState(false);
 
   const runSynthesisOnce = React.useCallback(async () => {
     const res = await fetch("/api/synthesize", {
@@ -309,6 +431,72 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
   }, [synth]);
 
   const isLoadingView = synthLoading && !synth && !synthError;
+  const showFeedbackBanner = !synthLoading && !synthError && !!synth;
+
+  async function handleGenerateFix(issue: string) {
+    setSelectedFixIssue(issue);
+    setFixPrompt("");
+    setFixCopied(false);
+    setFixLoading(true);
+    setFixModalOpen(true);
+
+    try {
+      const res = await fetch("/api/fix", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          issue,
+          url: data.url,
+          context,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to generate fix prompt");
+      }
+
+      const json = (await res.json()) as FixResponse;
+      setFixPrompt(json.prompt);
+    } catch (e: any) {
+      setFixPrompt(
+        `You are a senior UX engineer.
+
+Fix the following usability issue:
+
+"${issue}"
+
+Page URL:
+${data.url}
+
+${context ? `Context:\n${context}\n\n` : ""}Provide:
+- specific UI changes
+- accessibility improvements
+- realistic implementation guidance
+- no unnecessary redesign`
+      );
+    } finally {
+      setFixLoading(false);
+    }
+  }
+
+  async function handleCopyPrompt() {
+    if (!fixPrompt) return;
+
+    try {
+      await navigator.clipboard.writeText(fixPrompt);
+      setFixCopied(true);
+    } catch {
+      setFixCopied(false);
+    }
+  }
+
+  function handleCloseFixModal() {
+    setFixModalOpen(false);
+    setFixCopied(false);
+  }
 
   return (
     <main className="min-h-screen bg-background">
@@ -366,6 +554,16 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
                 Accessibility
               </TabsTrigger>
             </TabsList>
+
+            {showFeedbackBanner && (
+              <div className="mt-4 flex items-center gap-2 rounded-md border border-muted bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                <span className="text-base">ℹ</span>
+                <span>
+                  Help improve this audit. Hover or tap any feedback point to
+                  rate it. The AI learns from every response.
+                </span>
+              </div>
+            )}
 
             {isLoadingView ? (
               <div className="mt-4">
@@ -453,6 +651,25 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
                             </div>
                           </div>
 
+                          <div>
+                            <div className="font-medium">Quick wins</div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              Small changes that can improve usability quickly.
+                            </div>
+
+                            <ul className="mt-2 rounded-md border bg-muted/10 px-4 text-muted-foreground">
+                              {synth.quickWins.map((item, index) => (
+                                <QuickWinRow
+                                  key={`quickwin-${index}`}
+                                  text={item}
+                                  onGenerateFix={() =>
+                                    void handleGenerateFix(item)
+                                  }
+                                />
+                              ))}
+                            </ul>
+                          </div>
+
                           <div className="space-y-4">
                             <div className="font-medium">Summary</div>
 
@@ -482,25 +699,12 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
 
                           <div>
                             <div className="font-medium">Top risks</div>
-                            <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
+                            <ul className="mt-2 space-y-2 text-muted-foreground">
                               {synth.topRisks.map((item, index) => (
                                 <FeedbackRow
                                   key={`risk-${index}`}
                                   text={item}
                                   type="risk"
-                                />
-                              ))}
-                            </ul>
-                          </div>
-
-                          <div>
-                            <div className="font-medium">Quick wins</div>
-                            <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">
-                              {synth.quickWins.map((item, index) => (
-                                <FeedbackRow
-                                  key={`quickwin-${index}`}
-                                  text={item}
-                                  type="quickwin"
                                 />
                               ))}
                             </ul>
@@ -625,6 +829,16 @@ export function ResultsClient({ data }: { data: AuditResponse }) {
           </Tabs>
         </div>
       </div>
+
+      <FixPromptModal
+        open={fixModalOpen}
+        issue={selectedFixIssue}
+        prompt={fixPrompt}
+        loading={fixLoading}
+        copied={fixCopied}
+        onClose={handleCloseFixModal}
+        onCopy={() => void handleCopyPrompt()}
+      />
     </main>
   );
 }

@@ -3,18 +3,26 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-      <main className="flex flex-col items-center gap-8 px-6 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-          UX Audit Automation
-        </h1>
-        <p className="max-w-md text-muted-foreground">
-          Run structured UX audits with heuristic evaluation, accessibility checks, and prioritized fixes.
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-6 text-center">
+        <h1 className="text-4xl font-semibold tracking-tight">UX SCAN+</h1>
+
+        <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
+          AI-powered UX and accessibility audits in minutes.
         </p>
-        <Button asChild size="lg">
-          <Link href="/audit">Start Audit</Link>
-        </Button>
-      </main>
-    </div>
+
+        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+          Enter any URL and get a structured report with screenshots,
+          accessibility findings, usability risks, and AI-generated
+          improvement suggestions.
+        </p>
+
+        <div className="mt-8">
+          <Link href="/audit">
+            <Button size="lg">Run UX scan</Button>
+          </Link>
+        </div>
+      </div>
+    </main>
   );
 }

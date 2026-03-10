@@ -57,33 +57,40 @@ export default function AuditPage() {
           </Link>
         </div>
 
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-semibold">UCSCAN+</h1>
+          <p className="text-sm text-muted-foreground">
+            AI-powered UX and accessibility audits in minutes.
+          </p>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>New audit</CardTitle>
             <CardDescription>
-              Enter the URL and optional context to run a UX and accessibility audit.
+              Enter a page URL to run an automated UX, usability, and accessibility audit.
             </CardDescription>
           </CardHeader>
 
           <CardContent>
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
               <div className="grid gap-2">
-                <Label htmlFor="url">URL</Label>
+                <Label htmlFor="url">Page URL</Label>
                 <Input
                   id="url"
                   name="url"
                   type="url"
-                  placeholder="https://example.com/feature"
+                  placeholder="https://example.com/page"
                   required
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="context">Context for GPT</Label>
+                <Label htmlFor="context">Audit context (optional)</Label>
                 <Textarea
                   id="context"
                   name="context"
-                  placeholder="Example: Testing the betslip flow. Focus on clarity of odds, placement of the Place Bet button, error states, and anything confusing for new users."
+                  placeholder="Example: Reviewing a checkout page. Focus on CTA visibility, form clarity, error states, and mobile usability."
                   rows={4}
                 />
               </div>

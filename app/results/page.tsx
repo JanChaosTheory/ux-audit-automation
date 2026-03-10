@@ -10,7 +10,7 @@ function getBaseUrl() {
 export default async function ResultsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ url?: string }>;
+  searchParams: Promise<{ url?: string; context?: string }>;
 }) {
   const sp = await searchParams;
   const url = sp.url?.trim();
@@ -18,12 +18,14 @@ export default async function ResultsPage({
   if (!url) {
     return (
       <main className="mx-auto max-w-3xl p-8">
-        <h1 className="text-2xl font-semibold">Results</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Missing url param.</p>
+        <h1 className="text-2xl font-semibold">UCSCAN+ results</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Missing URL parameter.
+        </p>
         <p className="mt-1 text-sm">
           Try{" "}
           <code className="rounded bg-muted px-2 py-1">
-            /results?url=https://uxpilot.ai/ai-ui-list
+            /results?url=https://example.com
           </code>
         </p>
       </main>
@@ -35,10 +37,13 @@ export default async function ResultsPage({
 
   if (!res.ok) {
     const text = await res.text();
+
     return (
       <main className="mx-auto max-w-3xl p-8">
-        <h1 className="text-2xl font-semibold">Results</h1>
-        <p className="mt-2 text-sm text-destructive">Audit failed.</p>
+        <h1 className="text-2xl font-semibold">UCSCAN+ results</h1>
+        <p className="mt-2 text-sm text-destructive">
+          Audit could not be completed.
+        </p>
         <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-xs">
           {text}
         </pre>
@@ -47,5 +52,6 @@ export default async function ResultsPage({
   }
 
   const data = (await res.json()) as AuditResponse;
+
   return <ResultsClient data={data} />;
 }
