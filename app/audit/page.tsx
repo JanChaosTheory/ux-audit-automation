@@ -19,7 +19,7 @@ export default function AuditPage() {
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (loading) return;
@@ -41,6 +41,8 @@ export default function AuditPage() {
       url,
       context: context || "",
     });
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     router.push(`/results?${params.toString()}`);
   }
@@ -68,7 +70,8 @@ export default function AuditPage() {
           <CardHeader>
             <CardTitle>New audit</CardTitle>
             <CardDescription>
-              Enter a page URL to run an automated UX, usability, and accessibility audit.
+              Enter a page URL to run an automated UX, usability, and
+              accessibility audit.
             </CardDescription>
           </CardHeader>
 
@@ -82,6 +85,7 @@ export default function AuditPage() {
                   type="url"
                   placeholder="https://example.com/page"
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -92,6 +96,7 @@ export default function AuditPage() {
                   name="context"
                   placeholder="Example: Reviewing a checkout page. Focus on CTA visibility, form clarity, error states, and mobile usability."
                   rows={4}
+                  disabled={loading}
                 />
               </div>
 
