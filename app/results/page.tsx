@@ -1,10 +1,15 @@
 // app/results/page.tsx
+import { headers } from "next/headers";
 import { ResultsClient, type AuditResponse } from "./ResultsClient";
 
 export const dynamic = "force-dynamic";
 
-function getBaseUrl() {
-  return process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+async function getBaseUrl() {
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+
+  return `${protocol}://${host}`;
 }
 
 export default async function ResultsPage({
@@ -14,11 +19,12 @@ export default async function ResultsPage({
 }) {
   const sp = await searchParams;
   const url = sp.url?.trim();
+  const context = sp.context?.trim();
 
   if (!url) {
     return (
       <main className="mx-auto max-w-3xl p-8">
-        <h1 className="text-2xl font-semibold">UCSCAN+ results</h1>
+        <h1 className="text-2xl font-semibold">UX SCAN+ results</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Missing URL parameter.
         </p>
@@ -32,7 +38,11 @@ export default async function ResultsPage({
     );
   }
 
-  const apiUrl = `${getBaseUrl()}/api/audit?url=${encodeURIComponent(url)}`;
+  const baseUrl = await getBaseUrl();
+  const apiUrl = `${baseUrl}/api/audit?url=${encodeURIComponent(url)}${
+    context ? `&context=${encodeURIComponent(context)}` : ""
+  }`;
+
   const res = await fetch(apiUrl, { cache: "no-store" });
 
   if (!res.ok) {
@@ -40,7 +50,7 @@ export default async function ResultsPage({
 
     return (
       <main className="mx-auto max-w-3xl p-8">
-        <h1 className="text-2xl font-semibold">UCSCAN+ results</h1>
+        <h1 className="text-2xl font-semibold">UX SCAN+ results</h1>
         <p className="mt-2 text-sm text-destructive">
           Audit could not be completed.
         </p>
@@ -53,5 +63,5 @@ export default async function ResultsPage({
 
   const data = (await res.json()) as AuditResponse;
 
-  return <ResultsClient data={data} />;
+  return <ResultsClient data={{ ...data, context }} />;
 }
