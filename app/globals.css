@@ -124,3 +124,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+.font-fraunces {
+  font-family: "Fraunces", serif;
+  font-weight: 300;
+}

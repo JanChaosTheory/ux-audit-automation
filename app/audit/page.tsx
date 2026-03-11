@@ -103,7 +103,7 @@ export default function AuditPage() {
               <Button
                 type="submit"
                 size="lg"
-                className="w-full"
+                className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white"
                 disabled={loading}
               >
                 {loading ? (

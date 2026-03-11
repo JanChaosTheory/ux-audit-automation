@@ -22,13 +22,13 @@ function getImpactLabel(impact: string | null) {
 
 function getImpactVariant(
   impact: string | null
-): "default" | "secondary" | "destructive" {
+): "default" | "secondary" | "destructive" | "low" {
   const value = (impact ?? "").toLowerCase();
 
   if (value === "critical") return "destructive";
   if (value === "serious") return "destructive";
   if (value === "moderate") return "default";
-  if (value === "minor") return "secondary";
+  if (value === "minor") return "low";
 
   return "secondary";
 }

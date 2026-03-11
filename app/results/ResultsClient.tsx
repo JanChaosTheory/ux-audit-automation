@@ -244,7 +244,7 @@ function QuickWinRow({
           variant="outline"
           size="sm"
           onClick={onGenerateFix}
-          className="shrink-0"
+          className="shrink-0 border-[#16a34a] text-[#16a34a] hover:bg-[#16a34a]/10"
         >
           <span aria-hidden="true">✨</span>
           <span>Generate fix</span>
@@ -617,7 +617,7 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
 
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Audit results</h1>
+            <h1 className="text-2xl font-semibold font-fraunces">Audit results</h1>
 
             <div className="mt-2 text-sm">
               <span className="text-muted-foreground">URL:</span>{" "}
@@ -747,7 +747,7 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                           </div>
 
                           <div>
-                            <div className="font-medium">Quick wins</div>
+                            <div className="font-medium font-fraunces">Quick wins</div>
                             <div className="mt-1 text-xs text-muted-foreground">
                               Small changes that can improve usability quickly.
                             </div>
