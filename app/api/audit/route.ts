@@ -90,10 +90,8 @@ export async function GET(request: NextRequest) {
       timeout: PAGE_TIMEOUT_MS,
     });
 
-    await Promise.race([
-      desktopPage.waitForLoadState("domcontentloaded"),
-      desktopPage.waitForTimeout(4000),
-    ]);
+    await desktopPage.waitForLoadState("networkidle").catch(() => {});
+    await desktopPage.waitForTimeout(2500);
 
     const desktopScreenshot = await desktopPage.screenshot({
       type: "jpeg",
@@ -143,10 +141,8 @@ export async function GET(request: NextRequest) {
       timeout: PAGE_TIMEOUT_MS,
     });
 
-    await Promise.race([
-      mobilePage.waitForLoadState("domcontentloaded"),
-      mobilePage.waitForTimeout(4000),
-    ]);
+    await mobilePage.waitForLoadState("networkidle").catch(() => {});
+    await mobilePage.waitForTimeout(3000);
 
     const mobileScreenshot = await mobilePage.screenshot({
       type: "jpeg",
