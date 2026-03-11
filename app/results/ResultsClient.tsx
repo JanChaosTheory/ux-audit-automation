@@ -148,7 +148,7 @@ function LoadingState({
         <div className="flex items-center gap-3">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
           <div className="text-sm text-muted-foreground">
-            Estimated time: under 1 minute
+            Estimated time: ~3 minutes
           </div>
         </div>
 
@@ -768,6 +768,17 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                           <div className="space-y-4">
                             <div className="font-medium">Summary</div>
 
+                            {showFeedbackBanner && (
+                              <div className="flex items-center gap-2 rounded-md border border-muted bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                                <span className="text-base">ℹ</span>
+                                <span>
+                                  Help improve this audit. Hover or tap any
+                                  feedback point to rate it. The AI learns from
+                                  every response.
+                                </span>
+                              </div>
+                            )}
+
                             <div className="grid gap-4 md:grid-cols-2">
                               <SectionList
                                 title="Desktop"
@@ -783,17 +794,6 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                                 feedbackType="summary"
                               />
                             </div>
-
-                            {showFeedbackBanner && (
-                              <div className="mt-4 flex items-center gap-2 rounded-md border border-muted bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                                <span className="text-base">ℹ</span>
-                                <span>
-                                  Help improve this audit. Hover or tap any
-                                  feedback point to rate it. The AI learns from
-                                  every response.
-                                </span>
-                              </div>
-                            )}
 
                             <SectionList
                               title="Shared issues"
