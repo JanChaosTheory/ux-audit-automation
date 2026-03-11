@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     });
 
     await desktopPage.waitForLoadState("networkidle").catch(() => {});
-    await desktopPage.waitForTimeout(2500);
+    await desktopPage.waitForTimeout(4500);
 
     const desktopScreenshot = await desktopPage.screenshot({
       type: "jpeg",
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     });
 
     await mobilePage.waitForLoadState("networkidle").catch(() => {});
-    await mobilePage.waitForTimeout(3000);
+    await mobilePage.waitForTimeout(5000);
 
     const mobileScreenshot = await mobilePage.screenshot({
       type: "jpeg",
