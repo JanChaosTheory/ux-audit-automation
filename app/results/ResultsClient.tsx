@@ -769,7 +769,7 @@ ${context ? `Context:\n${context}\n\n` : ""}Provide:
                             <div className="font-medium">Summary</div>
 
                             {showFeedbackBanner && (
-                              <div className="flex items-center gap-2 rounded-md border border-muted bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2 rounded-md border border-muted bg-[#16a34a]/15 px-3 py-2 text-sm text-muted-foreground">
                                 <span className="text-base">ℹ</span>
                                 <span>
                                   Help improve this audit. Hover or tap any

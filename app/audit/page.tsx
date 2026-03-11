@@ -60,7 +60,7 @@ export default function AuditPage() {
         </div>
 
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold">UCSCAN+</h1>
+          <h1 className="text-2xl font-semibold font-fraunces">UX SCAN+</h1>
           <p className="text-sm text-muted-foreground">
             AI-powered UX and accessibility audits in minutes.
           </p>
